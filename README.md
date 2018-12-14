@@ -1,6 +1,9 @@
 # JupyterLab Shell File
 
-This extension is intended for creating and running a shell script file in JupyterLab.
+This extension is intended for creating and running a shell script file in JupyterLab. Additionally, it supports creation of SLURM job script and able to run through `sbatch` command.
+
+![](https://lh3.googleusercontent.com/Q1OIvG9s-5HhSld6NF3p2LKG3SFM-DzmXdzReQ5AbtzltVb1ZKhRtO9_2dQych1iDoPQrmwsrno)
+![](https://lh3.googleusercontent.com/aCZSA3KcX69VfLoEav0QTsQ9NzyO6B0rVBzuYOR133tv30DnTv6Gu2w1ivpxoaL3jPRIMYE8eIQ)
 
 ## Prerequisites
 
