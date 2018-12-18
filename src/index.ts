@@ -6,6 +6,7 @@ import { ICommandPalette } from '@jupyterlab/apputils';
 import { ILauncher } from '@jupyterlab/launcher';
 import { IFileBrowserFactory } from '@jupyterlab/filebrowser';
 import { IMainMenu } from '@jupyterlab/mainmenu';
+import { map, toArray } from '@phosphor/algorithm';
 
 import '../style/index.css';
 
@@ -48,96 +49,107 @@ function activate(
       });
   };
 
-  const runFile = (command: string) => {
-    return commands
-      .execute('terminal:create-new', {
-        initialCommand: command
-      })
-  }
-
   // Add commands
   commands.addCommand(CommandIDs.createFile, {
-    label: args => (
-      args['isPalette'] ?
-        `New ${args['extLabel'] as string}` : (args['extLabel'] as string)
-    ),
-    iconClass: args => (
-      args['displayIcon'] ? args['iconClass'] as string : ''
-    ),
     execute: args => {
       let cwd = args['cwd'] || browserFactory.defaultBrowser.model.path;
       let ext = args['ext'];
       return createFile(cwd as string, ext as string);
-    }
+    },
+    iconClass: args => (
+      args['displayIcon'] ? args['iconClass'] as string : ''
+    ),
+    label: args => (
+      args['isPalette'] ?
+        `New ${args['extLabel'] as string}` : (args['extLabel'] as string)
+    )
   });
 
   commands.addCommand(CommandIDs.runFile, {
-    label: 'Run shell script',
-    iconClass: 'jp-RunIcon',
     execute: args => {
-      const widget = browserFactory.tracker.currentWidget.selectedItems().next().path;
-      const fileName = widget.split(" ").join("\\ ");
-      let initialCommand = 'bash';
-      let fileNameExt = widget.split(".");
-      if (fileNameExt[fileNameExt.length-1] === SLURM_EXT) {
-        initialCommand = 'sbatch';
+      const { tracker } = browserFactory;
+      const { currentWidget } = tracker;
+
+      if (!currentWidget) {
+        return;
       }
-      const command = `${initialCommand} ${fileName}`;
-      return runFile(command as string);
-    }
-  })
 
-  // add to the launcher
-  if (launcher) {
-    launcher.add({
-      command: CommandIDs.createFile,
-      category: 'Other',
-      args: {
-        displayIcon: true,
-        iconClass: `${ICON_CLASS} ${SHELL_ICON_CLASS}`,
-        ext: SHELL_EXT,
-        extLabel: SHELL_EXT_LABEL
-      },
-      rank: 2
-    });
+      return Promise.all(
+        toArray(
+          map(currentWidget.selectedItems(), item => {
+            const fileName = item.path.split(" ").join("\\ ");
+            let fileNameExt = item.path.split(".");
+            let command = `bash ${fileName}`;
 
-    launcher.add({
-      command: CommandIDs.createFile,
-      category: 'Slum',
-      args: {
-        displayIcon: true,
-        iconClass: `${ICON_CLASS} ${SLURM_ICON_CLASS}`,
-        ext: SLURM_EXT,
-        extLabel: SLURM_EXT_LABEL
-      },
-      rank: 1
-    });
-  }
+            if (fileNameExt[fileNameExt.length-1] === SLURM_EXT) {
+              command = `sbatch ${fileName}`;
+            }
 
-  // add to the palette
-  if (palette) {
-    palette.addItem({
-      command: CommandIDs.createFile,
-      args: {
-        isPalette: true,
-        extLabel: SHELL_EXT_LABEL
-      },
-      category: PALETTE_CATEGORY
-    });
+            return commands.execute('terminal:create-new', {
+              initialCommand: command
+            });
+          })
+        )
+      );
+    },
+    iconClass: 'jp-RunIcon',
+    label: 'Run shell script',
+  });
 
-    palette.addItem({
-      command: CommandIDs.createFile,
-      args: {
-        isPalette: true,
-        ext: SLURM_EXT,
-        extLabel: SLURM_EXT_LABEL
-      },
-      category: PALETTE_CATEGORY
-    });
-  }
+  prepareLauncher(launcher);
+  preparePalette(palette);
+  prepareContextMenu(app);
+  prepareFileMenu(menu);
+}
 
-  // matches anywhere on filebrowser
-  const selectorContent = '.jp-DirListing-content';
+function prepareLauncher(launcher: any) {
+  launcher.add({
+    command: CommandIDs.createFile,
+    category: 'Other',
+    args: {
+      displayIcon: true,
+      iconClass: `${ICON_CLASS} ${SHELL_ICON_CLASS}`,
+      ext: SHELL_EXT,
+      extLabel: SHELL_EXT_LABEL
+    },
+    rank: 2
+  });
+
+  launcher.add({
+    command: CommandIDs.createFile,
+    category: 'Slurm',
+    args: {
+      displayIcon: true,
+      iconClass: `${ICON_CLASS} ${SLURM_ICON_CLASS}`,
+      ext: SLURM_EXT,
+      extLabel: SLURM_EXT_LABEL
+    },
+    rank: 1
+  });
+}
+
+function preparePalette(palette: any) {
+  palette.addItem({
+    command: CommandIDs.createFile,
+    args: {
+      isPalette: true,
+      extLabel: SHELL_EXT_LABEL
+    },
+    category: PALETTE_CATEGORY
+  });
+
+  palette.addItem({
+    command: CommandIDs.createFile,
+    args: {
+      isPalette: true,
+      ext: SLURM_EXT,
+      extLabel: SLURM_EXT_LABEL
+    },
+    category: PALETTE_CATEGORY
+  });
+}
+
+function prepareContextMenu(app: any) {
   // matches only non-directory items
   const selectorNotDir = '.jp-DirListing-item[data-isdir="false"]';
   app.contextMenu.addItem({
@@ -146,8 +158,8 @@ function activate(
     rank: 3
   });
 
-  // If the user did not click on any file, we still want to show paste and new folder,
-  // so target the content rather than an item.
+  // matches anywhere on filebrowser
+  const selectorContent = '.jp-DirListing-content';
   app.contextMenu.addItem({
     command: CommandIDs.createFile,
     selector: selectorContent,
@@ -173,8 +185,9 @@ function activate(
     },
     rank: -0.5
   });
+}
 
-  // add to the menu
+function prepareFileMenu(menu: any) {
   menu.fileMenu.newMenu.addGroup([
     {
       command: CommandIDs.createFile,
@@ -200,8 +213,8 @@ function activate(
 const extension: JupyterLabPlugin<void> = {
   id: 'jupyterlab-shell-script-file',
   autoStart: true,
-  requires: [IFileBrowserFactory],
-  optional: [
+  requires: [
+    IFileBrowserFactory,
     ILauncher,
     IMainMenu,
     ICommandPalette
