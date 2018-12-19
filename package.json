@@ -1,5 +1,5 @@
 {
-  "name": "jupyterlab_shell_script_file",
+  "name": "@enlznep/jupyterlab_shell_file",
   "version": "0.1.0",
   "description": "JupyterLab extension for creating and running shell script",
   "keywords": [

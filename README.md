@@ -12,7 +12,7 @@ This extension is intended for creating and running a shell script file in Jupyt
 ## Installation
 
 ```bash
-jupyter labextension install jupyterlab_shell_script_file
+jupyter labextension install @enlznep/jupyterlab_shell_file
 ```
 
 ## Development
